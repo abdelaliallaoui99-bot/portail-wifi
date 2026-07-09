@@ -4,109 +4,167 @@ import random
 
 # Configuration de la page
 st.set_page_config(
-    page_title="Serval - Portail Wi-Fi Visiteurs",
+    page_title="Serval S.A.S - Portail Wi-Fi Visiteurs",
     page_icon="📶",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Style CSS personnalisé basé sur la charte officielle de serval.fr
+# Style CSS pour coller à la charte serval.fr
 st.markdown("""
 <style>
-    /* Couleurs principales Serval */
     :root {
         --serval-green: #004737;
         --serval-orange: #e05326;
         --serval-light: #f4f7f6;
     }
     
-    /* Nettoyage du style par défaut de Streamlit */
-    .reportview-container { background: #ffffff; }
-    .main .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+    .main .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* En-tête Serval */
+    /* Bannière En-tête avec Logo intégré */
     .header-container {
         background-color: var(--serval-green);
         color: white;
-        padding: 2.5rem;
+        padding: 2rem;
         border-radius: 12px;
         margin-bottom: 2rem;
         border-bottom: 5px solid var(--serval-orange);
+        display: flex;
+        align-items: center;
+        gap: 2rem;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
-    .header-title {
+    
+    /* Logo Serval en CSS */
+    .logo-container {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 110px;
+        height: 90px;
+    }
+    .logo-s {
         font-size: 2.5rem;
+        font-weight: bold;
+        line-height: 1;
+        background: linear-gradient(180deg, #d32f2f 0%, #e05326 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-family: 'Georgia', serif;
+        transform: skewX(-10deg);
+    }
+    .logo-text {
+        color: #004737;
+        font-weight: bold;
+        font-size: 1.1rem;
+        font-family: sans-serif;
+        margin-top: 0.2rem;
+    }
+    
+    .header-text-block {
+        flex-grow: 1;
+    }
+    .header-title {
+        font-size: 2.2rem;
         font-weight: 700;
         margin: 0;
-        letter-spacing: 0.5px;
     }
     .header-subtitle {
         font-size: 1.1rem;
         opacity: 0.9;
-        margin-top: 0.5rem;
+        margin-top: 0.3rem;
     }
     
-    /* Cartes d'information QSE */
-    .qse-card {
-        background-color: #f8fafc;
+    /* Blocs de contenu */
+    .content-box {
+        background-color: #ffffff;
         border: 1px solid #e2e8f0;
-        border-left: 4px solid var(--serval-green);
         padding: 1.5rem;
         border-radius: 8px;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
     }
-    .qse-title {
+    .content-title {
         color: var(--serval-green);
+        font-size: 1.3rem;
         font-weight: bold;
-        margin-top: 0;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid var(--serval-light);
+        padding-bottom: 0.5rem;
     }
     
-    /* Pied de page Eco-conçu */
+    /* Chiffres clés */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .stat-card {
+        background: var(--serval-light);
+        padding: 1rem;
+        border-radius: 6px;
+        text-align: center;
+        border-top: 3px solid var(--serval-orange);
+    }
+    .stat-number {
+        color: var(--serval-green);
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #475569;
+    }
+    
     .serval-footer {
         text-align: center;
         color: #64748b;
         font-size: 0.85rem;
-        margin-top: 4rem;
+        margin-top: 3rem;
         padding-top: 1.5rem;
         border-top: 1px solid #e2e8f0;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Initialisation de la session pour la connexion
 if 'connected' not in st.session_state:
     st.session_state.connected = False
     st.session_state.role = None
 
-# --- PAGE 1 : ÉCRAN DE CONNEXION SERVAL ---
+# --- PAGE 1 : ÉCRAN D'ACCUEIL & CONNEXION ---
 if not st.session_state.connected:
     
-    # 1. Bannière En-tête
+    # En-tête avec Logo et Titre
     st.markdown("""
     <div class="header-container">
-        <div class="header-title">serval</div>
-        <div class="header-subtitle">Portail de Gestion des Accès Wi-Fi Visiteurs & Partenaires</div>
+        <div class="logo-container">
+            <div class="logo-s">S</div>
+            <div class="logo-text">serval</div>
+        </div>
+        <div class="header-text-block">
+            <div class="header-title">Serval S.A.S</div>
+            <div class="header-subtitle">Portail de Gestion des Accès Wi-Fi Visiteurs & Partenaires</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # 2. Corps de la page en 2 colonnes pour bien remplir l'espace
-    col1, col2 = st.columns([1.2, 1.8], gap="large")
+    # Organisation en 3 colonnes pour enrichir le visuel
+    col_left, col_mid, col_right = st.columns([1.1, 1.0, 0.9], gap="medium")
     
-    with col1:
-        st.subheader("🔑 Espace Sécurisé")
-        st.write("Veuillez vous authentifier pour accéder au panneau de configuration des tickets d'accès.")
+    with col_left:
+        st.markdown('<div class="content-box">', unsafe_allow_html=True)
+        st.subheader("🔑 Connexion Sécurisée")
+        st.write("Réservé au personnel de l'accueil et administrateurs.")
         
-        # Formulaire de connexion
         identifiant = st.text_input("Identifiant", placeholder="Ex: accueil")
         mot_de_pass = st.text_input("Mot de passe", type="password", placeholder="••••••••")
         
         if st.button("Se connecter", use_container_width=True):
-            # Les comptes de démo fonctionnent toujours discrètement ici
-            if identifiant == "admin" and mot_de_pass == "admin123":
+            if identifiant == "admin" and mot_de_pass == "accueil123": # Correction automatique de la faute
                 st.session_state.connected = True
                 st.session_state.role = "Administrateur"
                 st.rerun()
@@ -116,43 +174,88 @@ if not st.session_state.connected:
                 st.rerun()
             else:
                 st.error("Identifiant ou mot de passe incorrect.")
-                
-    with col2:
-        st.subheader("📋 Consignes de Sécurité & Politique Réseau")
+        st.markdown('</div>', unsafe_allow_html=True)
         
+        # Section Actualités pour remplir le bas de la colonne de gauche
         st.markdown("""
-        <div class="qse-card">
-            <div class="qse-title">🛡️ Sécurité Informatique & Traçabilité</div>
-            Conformément à la législation en vigueur, chaque accès visiteur généré est strictement nominal, 
-            temporaire (limité à la durée de la visite) et fait l'objet d'un archivage automatique des journaux de connexion.
+        <div class="content-box">
+            <div class="content-title">📢 Actualités Serval</div>
+            <small style="color: #e05326;"><b>News - 4 juin 2026</b></small><br>
+            <b>Salon de l'Agriculture</b><br>
+            Retrouvez notre équipe aux Côtes d'Armor les 13 et 14 juin 2026.<br><br>
+            <small style="color: #e05326;"><b>News - 1 avril 2026</b></small><br>
+            <b>Servatec Excell</b><br>
+            La nouvelle référence riche en protéines laitières pour un sevrage réussi.
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col_mid:
+        st.markdown("""
+        <div class="content-box">
+            <div class="content-title">🌱 Serval, partenaire des éleveurs de demain</div>
+            <p><b>Expert de la nutrition des jeunes animaux</b></p>
+            <p style="font-size: 0.9rem; text-align: justify;">
+            Serval S.A.S est un fabricant français d’aliment d’allaitement et de solutions nutritionnelles pour jeunes animaux depuis plus de 60 ans. 
+            Grâce à notre expertise dans le choix des matières premières laitières (poudre de lait, lactosérum) et dans la réalité du terrain, 
+            l’équipe vous propose un accompagnement adapté à chaque besoin (veaux laitiers, allaitants, agneaux, chevreaux, bufflons...).
+            </p>
         </div>
         
-        <div class="qse-card">
-            <div class="qse-title">🌱 Engagement RSE & Éco-conception</div>
-            Ce portail est optimisé pour consommer un minimum de ressources serveurs. L'envoi des tickets d'accès 
-            est dématérialisé par e-mail afin de limiter l'impression papier inutile au sein de nos sites.
+        <div class="content-box">
+            <div class="content-title">📊 Serval en un coup d'œil</div>
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-number">+ 100 M€</div>
+                    <div class="stat-label">Chiffre d'affaires</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">+ 1M</div>
+                    <div class="stat-label">Animaux nourris / an</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">4</div>
+                    <div class="stat-label">Usines dans le monde</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">+ 100</div>
+                    <div class="stat-label">Collaborateurs</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col_right:
+        st.markdown("""
+        <div class="content-box">
+            <div class="content-title">🥩 Notre Filière Viande</div>
+            <p style="font-size: 0.9rem; text-align: justify;">
+            En partenariat avec 150 éleveurs, le groupe produit plus de 50 000 veaux sélectionnés, nés, élevés et abattus en France 
+            selon des cahiers des charges stricts respectant le bien-être animal et l’environnement.
+            </p>
         </div>
         
-        <div class="qse-card">
-            <div class="qse-title">🤝 Serval, partenaire des éleveurs de demain</div>
-            Besoin d'assistance technique ou d'un accès étendu pour un audit ? Contactez le service DSI 
-            ou le responsable Sécurité/QSE du site de Sainte-Eanne.
+        <div class="content-box">
+            <div class="content-title">🛡️ Traçabilité & Sécurité QSE</div>
+            <p style="font-size: 0.9rem; text-align: justify;">
+            Chaque code d'accès Wi-Fi généré sur ce portail est strictement temporaire, tracé, et soumis aux réglementations RGPD. 
+            L'envoi des tickets est dématérialisé par e-mail afin de respecter nos engagements de réduction du papier.
+            </p>
+            <hr style="margin: 0.8rem 0; border: none; border-top: 1px solid #e2e8f0;">
+            <small>📍 <b>Siège social :</b> La Creuse, 79800 SAINTE-EANNE<br>📞 <b>DSI / Contact :</b> +33 (0)5 49 06 28 28</small>
         </div>
         """, unsafe_allow_html=True)
 
-    # 3. Footer officiel
     st.markdown("""
     <div class="serval-footer">
         Mentions légales - Politique de confidentialité - © 2026 Serval S.A.S - 🍃 Site Internet éco-conçu
     </div>
     """, unsafe_allow_html=True)
 
-# --- PAGE 2 : APPLICATION CONNECTÉE (GESTION DES TICKETS) ---
+# --- PAGE 2 : GENERATION DE TICKETS ---
 else:
-    # Bouton de déconnexion en haut à droite
     col_title, col_logout = st.columns([4, 1])
     with col_title:
-        st.markdown(f"<h2 style='color:#004737;'>🟢 Session active : {st.session_state.role}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:#004737;'>🟢 Session active : {st.session_state.role} (Serval S.A.S)</h2>", unsafe_allow_html=True)
     with col_logout:
         if st.button("Se déconnecter", type="primary"):
             st.session_state.connected = False
@@ -160,7 +263,6 @@ else:
             st.rerun()
             
     st.divider()
-    
     st.subheader("📝 Générer un nouveau Ticket d'Accès Wi-Fi Visiteur")
     
     col_f1, col_f2 = st.columns(2)
@@ -169,24 +271,23 @@ else:
         societe = st.text_input("Société / Organisme")
     with col_f2:
         duree = st.slider("Durée de l'accès (en heures)", min_value=1.0, max_value=7.0, value=2.0, step=0.5)
-        email = st.text_input("Adresse E-mail du visiteur (pour envoi automatique)")
+        email = st.text_input("Adresse E-mail du visiteur")
 
     if st.button("Confirmer et Générer le Ticket", type="primary"):
         if nom_visiteur and societe and email:
             with st.spinner("Génération des identifiants sécurisés Serval..."):
                 time.sleep(1.5)
-                
-            # Génération des codes
             prefix = "".join(nom_visiteur.lower().split())[:4]
             wifi_id = f"serval_{prefix}{random.randint(10,99)}"
             wifi_key = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=8))
             
             st.success("Ticket créé avec succès !")
-            
-            # Affichage du ticket final
             st.markdown(f"""
             <div style="background-color: #ffffff; border: 2px dashed #004737; padding: 2rem; border-radius: 8px; max-width: 500px; margin: 1.5rem auto; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                <h3 style="text-align: center; color: #004737; margin-top: 0; letter-spacing:1px;">TICKET ACCÈS WI-FI SERVAL</h3>
+                <div style="text-align:center; margin-bottom:1rem;">
+                    <span style="background:#004737; color:white; padding:0.4rem 1rem; font-weight:bold; border-radius:4px;">Serval S.A.S</span>
+                </div>
+                <h3 style="text-align: center; color: #004737; margin-top: 0; letter-spacing:1px;">TICKET ACCÈS WI-FI</h3>
                 <p style="text-align: center; color: #64748b;">-------------------------------------</p>
                 <p><b>Visiteur :</b> {nom_visiteur}</p>
                 <p><b>Société :</b> {societe}</p>
