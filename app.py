@@ -156,7 +156,7 @@ if 'connected' not in st.session_state:
     st.session_state.connected = False
     st.session_state.role = None
 
-# --- PAGE 1 : ACCUEIL & CONNEXION ---
+# --- PAGE 1 : ACCUEIL & CONNEXION MODERNE (INCHANGÉE) ---
 if not st.session_state.connected:
     
     st.markdown("""
@@ -232,7 +232,7 @@ if not st.session_state.connected:
     </div>
     """, unsafe_allow_html=True)
 
-# --- PAGE 2 : VERSION D'ORIGINE INITIALE ---
+# --- PAGE 2 : VERSION INITIALE D'ORIGINE ---
 else:
     col_title, col_logout = st.columns([4, 1])
     with col_title:
@@ -264,7 +264,7 @@ else:
                 <p><b>Visiteur :</b> {nom_visiteur.upper()}</p>
                 <p><b>Société :</b> {societe}</p>
                 <p><b>Valable le :</b> {time.strftime('%d/%m/%Y')}</p>
-                <p><b>Horaires :</b> {time.strftime('%H:%M')} - {(st.selectbox('', [''], label_visibility='collapsed') or True) and time.strftime('%H:%M', time.localtime(time.time() + duree*3600))} ({float(duree)}h)</p>
+                <p><b>Horaires :</b> {time.strftime('%H:%M')} - {time.strftime('%H:%M', time.localtime(time.time() + duree*3600))} ({float(duree)}h)</p>
                 <p style="text-align: center;">-------------------------</p>
                 <div style="background-color: #f0f2f6; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
                     <p style="margin: 5px 0; font-size: 16px;"><b>ID :</b> <span style="background-color: #e0e2e6; padding: 2px 6px; border-radius: 3px;">{wifi_id}</span></p>
