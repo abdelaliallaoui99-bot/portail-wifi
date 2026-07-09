@@ -159,7 +159,6 @@ if 'connected' not in st.session_state:
 # --- PAGE 1 : ACCUEIL & CONNEXION (INCHANGÉE) ---
 if not st.session_state.connected:
     
-    # En-tête
     st.markdown("""
     <div class="header-container">
         <div class="logo-serval">
@@ -182,8 +181,8 @@ if not st.session_state.connected:
         st.markdown('<div class="login-box">', unsafe_allow_html=True)
         st.markdown('<h3 style="color:var(--serval-green); margin-top:0; margin-bottom:1.5rem;">🔑 Connexion Sécurisée</h3>', unsafe_allow_html=True)
         
-        identifiant = st.text_input("Identifiant", placeholder="Ex: accueil")
-        mot_de_pass = st.text_input("Mot de passe", type="password", placeholder="••••••••")
+        identifiant = st.text_input("Identifiant", placeholder="Ex: accueil", key="login_id")
+        mot_de_pass = st.text_input("Mot de passe", type="password", placeholder="••••••••", key="login_pwd")
         
         st.markdown('<div style="margin-top: 1.5rem;">', unsafe_allow_html=True)
         if st.button("Se connecter", use_container_width=True, type="primary"):
@@ -218,7 +217,6 @@ if not st.session_state.connected:
         </div>
         """, unsafe_allow_html=True)
         
-    # Chiffres clés bas de page
     st.markdown("""
     <div class="stat-grid">
         <div class="stat-card"><div class="stat-number">+ 100 M€</div><div class="stat-label">Chiffre d'affaires</div></div>
@@ -234,13 +232,13 @@ if not st.session_state.connected:
     </div>
     """, unsafe_allow_html=True)
 
-# --- PAGE 2 : GENERATION DE TICKETS (ANCIENNE VERSION) ---
+# --- PAGE 2 : GENERATION DE TICKETS (VERSION PRÉCÉDENTE FIXÉE) ---
 else:
     col_title, col_logout = st.columns([4, 1])
     with col_title:
-        st.markdown(f"<h2 style='color:#004737;'>🟢 Session active : {st.session_state.role}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:#004737; margin:0;'>🟢 Session active : {st.session_state.role}</h2>", unsafe_allow_html=True)
     with col_logout:
-        if st.button("Se déconnecter", type="primary"):
+        if st.button("Se déconnecter", type="primary", use_container_width=True):
             st.session_state.connected = False
             st.session_state.role = None
             st.rerun()
@@ -248,18 +246,20 @@ else:
     st.divider()
     st.subheader("📝 Générer un nouveau Ticket d'Accès Wi-Fi Visiteur")
     
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
-        nom_visiteur = st.text_input("Nom & Prénom du Visiteur")
-        societe = st.text_input("Société / Organisme")
-    with col_f2:
-        duree = st.slider("Durée de l'accès (en heures)", min_value=1.0, max_value=7.0, value=2.0, step=0.5)
-        email = st.text_input("Adresse E-mail du visiteur")
+    # Utilisation d'un formulaire pour empêcher les rafraîchissements intempestifs de Streamlit
+    with st.form("ticket_form", clear_on_submit=False):
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            nom_visiteur = st.text_input("Nom & Prénom du Visiteur")
+            societe = st.text_input("Société / Organisme")
+        with col_f2:
+            duree = st.slider("Durée de l'accès (en heures)", min_value=1.0, max_value=7.0, value=2.0, step=0.5)
+            email = st.text_input("Adresse E-mail du visiteur")
+            
+        submit_button = st.form_submit_button("Confirmer et Générer le Ticket", type="primary")
 
-    if st.button("Confirmer et Générer le Ticket", type="primary"):
+    if submit_button:
         if nom_visiteur and societe and email:
-            with st.spinner("Génération des identifiants sécurisés Serval..."):
-                time.sleep(1.5)
             prefix = "".join(nom_visiteur.lower().split())[:4]
             wifi_id = f"serval_{prefix}{random.randint(10,99)}"
             wifi_key = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=8))
