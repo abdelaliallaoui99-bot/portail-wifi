@@ -156,7 +156,7 @@ if 'connected' not in st.session_state:
     st.session_state.connected = False
     st.session_state.role = None
 
-# --- PAGE 1 : ACCUEIL & CONNEXION (INCHANGÉE) ---
+# --- PAGE 1 : ACCUEIL & CONNEXION ---
 if not st.session_state.connected:
     
     st.markdown("""
@@ -181,8 +181,8 @@ if not st.session_state.connected:
         st.markdown('<div class="login-box">', unsafe_allow_html=True)
         st.markdown('<h3 style="color:var(--serval-green); margin-top:0; margin-bottom:1.5rem;">🔑 Connexion Sécurisée</h3>', unsafe_allow_html=True)
         
-        identifiant = st.text_input("Identifiant", placeholder="Ex: accueil", key="login_id")
-        mot_de_pass = st.text_input("Mot de passe", type="password", placeholder="••••••••", key="login_pwd")
+        identifiant = st.text_input("Identifiant", placeholder="Ex: accueil")
+        mot_de_pass = st.text_input("Mot de passe", type="password", placeholder="••••••••")
         
         st.markdown('<div style="margin-top: 1.5rem;">', unsafe_allow_html=True)
         if st.button("Se connecter", use_container_width=True, type="primary"):
@@ -232,52 +232,47 @@ if not st.session_state.connected:
     </div>
     """, unsafe_allow_html=True)
 
-# --- PAGE 2 : GENERATION DE TICKETS (VERSION PRÉCÉDENTE FIXÉE) ---
+# --- PAGE 2 : VERSION D'ORIGINE INITIALE ---
 else:
     col_title, col_logout = st.columns([4, 1])
     with col_title:
-        st.markdown(f"<h2 style='color:#004737; margin:0;'>🟢 Session active : {st.session_state.role}</h2>", unsafe_allow_html=True)
+        st.write(f"### Session active : {st.session_state.role}")
     with col_logout:
-        if st.button("Se déconnecter", type="primary", use_container_width=True):
+        if st.button("Se déconnecter"):
             st.session_state.connected = False
             st.session_state.role = None
             st.rerun()
             
-    st.divider()
-    st.subheader("📝 Générer un nouveau Ticket d'Accès Wi-Fi Visiteur")
+    st.title("Portail Wi-Fi Visiteurs")
+    st.subheader("Veuillez vous connecter pour gérer les accès")
     
-    # Utilisation d'un formulaire pour empêcher les rafraîchissements intempestifs de Streamlit
-    with st.form("ticket_form", clear_on_submit=False):
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-            nom_visiteur = st.text_input("Nom & Prénom du Visiteur")
-            societe = st.text_input("Société / Organisme")
-        with col_f2:
-            duree = st.slider("Durée de l'accès (en heures)", min_value=1.0, max_value=7.0, value=2.0, step=0.5)
-            email = st.text_input("Adresse E-mail du visiteur")
-            
-        submit_button = st.form_submit_button("Confirmer et Générer le Ticket", type="primary")
+    nom_visiteur = st.text_input("Nom & Prénom du Visiteur")
+    societe = st.text_input("Société")
+    duree = st.slider("Valable pour (heures)", 1, 7, 2)
+    email = st.text_input("Courriel du Visiteur")
 
-    if submit_button:
+    if st.button("Se connecter", key="btn_generate"):
         if nom_visiteur and societe and email:
             prefix = "".join(nom_visiteur.lower().split())[:4]
-            wifi_id = f"serval_{prefix}{random.randint(10,99)}"
+            wifi_id = f"wifi_{prefix}{random.randint(10,99)}"
             wifi_key = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", k=8))
             
-            st.success("Ticket créé avec succès !")
             st.markdown(f"""
-            <div style="background-color: #ffffff; border: 2px dashed #004737; padding: 2rem; border-radius: 8px; max-width: 500px; margin: 1.5rem auto; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                <h3 style="text-align: center; color: #004737; margin-top: 0; letter-spacing:1px;">TICKET ACCÈS WI-FI SERVAL</h3>
-                <p style="text-align: center; color: #64748b;">-------------------------------------</p>
-                <p><b>Visiteur :</b> {nom_visiteur}</p>
+            <div style="border: 2px dashed #cccccc; padding: 20px; border-radius: 10px; max-width: 500px; margin: 20px auto; font-family: monospace; background-color: #ffffff;">
+                <h2 style="text-align: center; margin-top: 0;">TICKET ACCÈS WI-FI</h2>
+                <p style="text-align: center;">-------------------------</p>
+                <p><b>Visiteur :</b> {nom_visiteur.upper()}</p>
                 <p><b>Société :</b> {societe}</p>
-                <p><b>Horaires :</b> Validité {duree} heures</p>
-                <div style="background-color: #f4f7f6; padding: 1rem; border-radius: 6px; margin: 1rem 0; border-left: 4px solid #e05326;">
-                    <p style="margin: 0.2rem 0;"><b>ID Réseau :</b> <code style="color:#004737; font-size:1.1rem;">{wifi_id}</code></p>
-                    <p style="margin: 0.2rem 0;"><b>Clé Wi-Fi :</b> <code style="color:#e05326; font-size:1.1rem;">{wifi_key}</code></p>
+                <p><b>Valable le :</b> {time.strftime('%d/%m/%Y')}</p>
+                <p><b>Horaires :</b> {time.strftime('%H:%M')} - {(st.selectbox('', [''], label_visibility='collapsed') or True) and time.strftime('%H:%M', time.localtime(time.time() + duree*3600))} ({float(duree)}h)</p>
+                <p style="text-align: center;">-------------------------</p>
+                <div style="background-color: #f0f2f6; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+                    <p style="margin: 5px 0; font-size: 16px;"><b>ID :</b> <span style="background-color: #e0e2e6; padding: 2px 6px; border-radius: 3px;">{wifi_id}</span></p>
+                    <p style="margin: 5px 0; font-size: 16px;"><b>Clé :</b> <span style="background-color: #e0e2e6; padding: 2px 6px; border-radius: 3px; color: #ff4b4b; font-weight: bold;">{wifi_key}</span></p>
                 </div>
-                <p style="font-size: 0.85rem; color: #16a34a; text-align: center; font-style: italic;">Simulation d'envoi d'e-mail effectuée avec succès à {email}.</p>
+                <p style="text-align: center;">-------------------------</p>
+                <p style="font-size: 12px; color: #666666; text-align: center; font-style: italic;">Simulation d'envoi d'e-mail effectuée avec succès.</p>
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.warning("Veuillez remplir tous les champs du formulaire avant de valider.")
+            st.warning("Veuillez remplir tous les champs.")
