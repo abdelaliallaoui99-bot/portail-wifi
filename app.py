@@ -555,7 +555,7 @@ else:
     # ==========================================
     if st.session_state.current_page == "Formulaire":
         st.markdown('<div class="content-card">', unsafe_allow_html=True)
-        st.markdown('<h2 style="margin-top:0;"><i class="fa-solid fa-file-signature"></i> Écran 2 - Formulaire de déclaration</h2>', unsafe_allow_html=True)
+        st.markdown('<h2 style="margin-top:0;"><i class="fa-solid fa-file-signature"></i> Formulaire de déclaration</h2>', unsafe_allow_html=True)
         st.write("Saisissez les informations du visiteur pour activer son accès temporaire sécurisé.")
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -567,7 +567,7 @@ else:
             st.session_state.f_email = ""
             st.session_state.f_company = ""
             st.session_state.f_host = ""
-            st.session_state.f_reason = "Réunion"
+            st.session_state.f_reason = ""
             st.session_state.f_comments = ""
             st.session_state.f_rgpd = False
 
@@ -580,7 +580,8 @@ else:
             company = st.text_input("Société *", placeholder="Ex: DDVH S.A.", key="f_company")
             
         with col_f2:
-            reason = st.selectbox("Motif de la visite *", ["Réunion", "Entretien", "Maintenance technique", "Prestation externe", "Autre motif"], key="f_reason")
+            # Remplacement de st.selectbox par st.text_input pour un champ texte libre
+            reason = st.text_input("Motif de la visite *", placeholder="Ex: Réunion, Maintenance, Entretien...", key="f_reason")
             host = st.text_input("Personne visitée (Nom et prénom) *", placeholder="Ex: Yanis Talbi", key="f_host")
             visit_date = st.date_input("Date de visite *", date(2026, 7, 9), key="f_date")
             
@@ -618,7 +619,7 @@ else:
 
         # Action de validation
         if valider_btn:
-            if not visitor_lastname or not visitor_firstname or not visitor_email or not company or not host:
+            if not visitor_lastname or not visitor_firstname or not visitor_email or not company or not host or not reason:
                 st.markdown('<div class="custom-error-banner"><i class="fa-solid fa-circle-exclamation"></i> Veuillez renseigner l\'ensemble des champs obligatoires marqués d\'un astérisque (*).</div>', unsafe_allow_html=True)
             elif not rgpd:
                 st.markdown('<div class="custom-error-banner"><i class="fa-solid fa-circle-exclamation"></i> L\'acceptation de la charte de confidentialité RGPD est obligatoire pour valider la demande.</div>', unsafe_allow_html=True)
