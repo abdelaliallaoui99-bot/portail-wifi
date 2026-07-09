@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Style CSS épuré et charte officielle
+# Style CSS épuré, agrandissement de la zone de connexion et intégration charte
 st.markdown("""
 <style>
     :root {
@@ -21,7 +21,7 @@ st.markdown("""
     
     .main .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
     
-    /* En-tête Serval avec vrai logo recréé */
+    /* En-tête Serval */
     .header-container {
         background-color: var(--serval-green);
         color: white;
@@ -35,7 +35,7 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     
-    /* Logo officiel Serval dessiné en pur CSS */
+    /* Logo officiel Serval */
     .logo-serval {
         display: flex;
         flex-direction: column;
@@ -90,7 +90,18 @@ st.markdown("""
         opacity: 0.9;
     }
     
-    /* Blocs minimalistes */
+    /* Zone de Connexion */
+    .login-box {
+        background-color: #ffffff;
+        border: 1px solid #cbd5e1;
+        padding: 2.5rem 2rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        border-top: 4px solid var(--serval-orange);
+        margin-top: 0.5rem;
+    }
+    
+    /* Blocs d'information */
     .content-box {
         background-color: #ffffff;
         border: 1px solid #e2e8f0;
@@ -104,17 +115,14 @@ st.markdown("""
         font-size: 1.1rem;
         font-weight: bold;
         margin-bottom: 0.8rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
     }
     
-    /* Chiffres clés condensés */
+    /* Chiffres clés */
     .stat-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 1rem;
-        margin-top: 1rem;
+        margin-top: 1.5rem;
     }
     .stat-card {
         background: var(--serval-light);
@@ -148,10 +156,10 @@ if 'connected' not in st.session_state:
     st.session_state.connected = False
     st.session_state.role = None
 
-# --- PAGE 1 : ACCUEIL & CONNEXION NETTOYÉE ---
+# --- PAGE 1 : ACCUEIL & CONNEXION ---
 if not st.session_state.connected:
     
-    # En-tête avec le logo fidèle
+    # En-tête
     st.markdown("""
     <div class="header-container">
         <div class="logo-serval">
@@ -168,18 +176,19 @@ if not st.session_state.connected:
     </div>
     """, unsafe_allow_html=True)
     
-    # Disposition équilibrée en 2 colonnes
-    col_left, col_right = st.columns([1.3, 1.7], gap="large")
+    col_left, col_right = st.columns([1.4, 1.6], gap="large")
     
     with col_left:
-        st.markdown('<div class="content-box" style="border-left-color:#e05326;">', unsafe_allow_html=True)
-        st.markdown('<div class="content-title">🔑 Connexion Sécurisée</div>', unsafe_allow_html=True)
+        st.markdown('<div class="login-box">', unsafe_allow_html=True)
+        st.markdown('<h3 style="color:var(--serval-green); margin-top:0; margin-bottom:1.5rem;">🔑 Connexion Sécurisée</h3>', unsafe_allow_html=True)
         
-        identifiant = st.text_input("Identifiant", placeholder="accueil")
+        identifiant = st.text_input("Identifiant", placeholder="Ex: accueil")
         mot_de_pass = st.text_input("Mot de passe", type="password", placeholder="••••••••")
         
-        if st.button("Se connecter", use_container_width=True):
-            if identifiant == "admin" and mot_de_pass == "accueil123":
+        st.markdown('<div style="margin-top: 1.5rem;">', unsafe_allow_html=True)
+        if st.button("Se connecter", use_container_width=True, type="primary"):
+            # Vérification exacte des deux comptes demandés
+            if identifiant == "admin" and mot_de_pass == "admin123":
                 st.session_state.connected = True
                 st.session_state.role = "Administrateur"
                 st.rerun()
@@ -190,12 +199,13 @@ if not st.session_state.connected:
             else:
                 st.error("Identifiant ou mot de passe incorrect.")
         st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         
     with col_right:
         st.markdown("""
         <div class="content-box">
             <div class="content-title">🌱 Serval, partenaire des éleveurs de demain</div>
-            <p style="font-size: 0.9rem; margin-bottom: 0;">
+            <p style="font-size: 0.9rem; margin-bottom: 0; text-align: justify;">
             <b>Expert de la nutrition des jeunes animaux</b><br>
             Fabricant français d’aliment d’allaitement et de solutions nutritionnelles de haute qualité pour jeunes animaux depuis plus de 60 ans.
             </p>
@@ -203,13 +213,13 @@ if not st.session_state.connected:
         
         <div class="content-box">
             <div class="content-title">🛡️ Traçabilité & Sécurité Informatique</div>
-            <p style="font-size: 0.9rem; margin-bottom: 0;">
+            <p style="font-size: 0.9rem; margin-bottom: 0; text-align: justify;">
             Chaque ticket d'accès Wi-Fi généré est temporaire, tracé conformément aux réglementations, et transmis de manière éco-conçue directement par e-mail.
             </p>
         </div>
         """, unsafe_allow_html=True)
         
-    # Chiffres clés déplacés et épurés tout en bas sur toute la largeur
+    # Chiffres clés bas de page
     st.markdown("""
     <div class="stat-grid">
         <div class="stat-card"><div class="stat-number">+ 100 M€</div><div class="stat-label">Chiffre d'affaires</div></div>
