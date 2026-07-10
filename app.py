@@ -1,3 +1,5 @@
+import base64
+import re
 import streamlit as st
 import random
 import string
@@ -17,6 +19,30 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# --- GESTION DES VISUELS LOCAUX (logo, photo d'élevage, etc.) ---
+# Placez vos propres fichiers dans un dossier "assets/" à la racine du projet.
+# Si un fichier est absent, l'application bascule automatiquement sur le design
+# vectoriel/CSS existant : rien ne casse tant que les photos ne sont pas ajoutées.
+ASSETS_DIR = "assets"
+
+def get_base64_asset(filename):
+    """Encode un fichier image local en base64 pour l'injecter dans le CSS (background-image)."""
+    path = os.path.join(ASSETS_DIR, filename)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+        ext = filename.split(".")[-1].lower()
+        mime = "jpeg" if ext in ("jpg", "jpeg") else ext
+        return f"data:image/{mime};base64,{base64.b64encode(data).decode()}"
+    except Exception:
+        return None
+
+LOGO_B64 = get_base64_asset("logo.png")
+HERO_B64 = get_base64_asset("hero.jpg")
+FARM_B64 = get_base64_asset("farm.jpg")
 
 # --- SÉCURITÉ : HACHAGE DES MOTS DE PASSE ---
 def hash_password(raw_password):
@@ -572,6 +598,13 @@ def send_email_smtp(to_address, subject, body):
         return False, str(e)
 
 
+EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+def is_valid_email(address):
+    """Vérifie que l'adresse e-mail a un format valide avant l'envoi du ticket Wi-Fi."""
+    return bool(EMAIL_REGEX.match(address.strip()))
+
+
 def generate_wifi_credentials(lastname):
     """Génère de manière sécurisée des identifiants Wi-Fi uniques."""
     clean_name = "".join(x for x in lastname.lower() if x.isalnum())[:4]
@@ -636,14 +669,19 @@ def render_visitors_table(visitors_list):
 # --- ÉCRAN 1 : CONNEXION (PAGE ACCUEIL) ---
 # ==========================================
 if not st.session_state.logged_in:
-    st.markdown("""
-    <div class="header-container">
+    logo_html = (
+        f'<img src="{LOGO_B64}" style="max-width:70px; max-height:70px; object-fit:contain;">'
+        if LOGO_B64 else
+        '<div class="logo-icon"><div class="logo-curve-1"></div><div class="logo-curve-2"></div></div><div class="logo-word">serval</div>'
+    )
+    hero_style = (
+        f'background-image: linear-gradient(120deg, rgba(0,71,55,0.92) 0%, rgba(0,71,55,0.75) 55%, rgba(224,83,38,0.55) 100%), url("{HERO_B64}"); background-size: cover; background-position: center;'
+        if HERO_B64 else ""
+    )
+    st.markdown(f"""
+    <div class="header-container" style="{hero_style}">
         <div class="logo-serval">
-            <div class="logo-icon">
-                <div class="logo-curve-1"></div>
-                <div class="logo-curve-2"></div>
-            </div>
-            <div class="logo-word">serval</div>
+            {logo_html}
         </div>
         <div class="header-text-block">
             <div class="header-title" style="color:white; font-size:2rem; font-weight:700;">Serval S.A.S</div>
@@ -673,13 +711,20 @@ if not st.session_state.logged_in:
         st.markdown('</div>', unsafe_allow_html=True)
         
     with col_right:
-        st.markdown("""
-        <div class="content-box">
-            <div class="content-title">🌱 Serval, partenaire des éleveurs de demain</div>
-            <p style="font-size: 0.9rem; margin-bottom: 0; text-align: justify; color: #334155;">
-            <b>Expert de la nutrition des jeunes animaux</b><br>
-            Fabricant français d’aliment d’allaitement et de solutions nutritionnelles de haute qualité pour jeunes animaux depuis plus de 60 ans.
-            </p>
+        farm_image_html = (
+            f'<img src="{FARM_B64}" style="width:100%; height:150px; object-fit:cover; border-radius:8px 8px 0 0; display:block;">'
+            if FARM_B64 else ""
+        )
+        st.markdown(f"""
+        <div class="content-box" style="padding:0; overflow:hidden;">
+            {farm_image_html}
+            <div style="padding: 1.5rem;">
+                <div class="content-title">🌱 Serval, partenaire des éleveurs de demain</div>
+                <p style="font-size: 0.9rem; margin-bottom: 0; text-align: justify; color: #334155;">
+                <b>Expert de la nutrition des jeunes animaux</b><br>
+                Fabricant français d'aliment d'allaitement et de solutions nutritionnelles de haute qualité pour jeunes animaux depuis plus de 60 ans.
+                </p>
+            </div>
         </div>
         
         <div class="content-box">
@@ -711,15 +756,16 @@ if not st.session_state.logged_in:
 # ==========================================
 else:
     # En-tête de session dynamique
+    logo_html_inner = (
+        f'<img src="{LOGO_B64}" style="max-width:60px; max-height:60px; object-fit:contain;">'
+        if LOGO_B64 else
+        '<div class="logo-icon"><div class="logo-curve-1"></div><div class="logo-curve-2"></div></div><div class="logo-word">serval</div>'
+    )
     st.markdown(f"""
     <div class="serval-header">
         <div class="serval-header-left">
             <div class="logo-serval">
-                <div class="logo-icon">
-                    <div class="logo-curve-1"></div>
-                    <div class="logo-curve-2"></div>
-                </div>
-                <div class="logo-word">serval</div>
+                {logo_html_inner}
             </div>
             <div>
                 <h1>Serval S.A.S - Portail Wi-Fi</h1>
@@ -733,7 +779,7 @@ else:
     """, unsafe_allow_html=True)
 
     # Barre de Navigation d'onglets réactifs (Page 3 d'origine supprimée, Navigation directe)
-    nav_col1, nav_col2, nav_col3, nav_col4 = st.columns([1.2, 1.2, 1.2, 0.8])
+    nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns([1.1, 1.1, 1.1, 0.9, 0.7])
     with nav_col1:
         if st.button("📝 Formulaire de déclaration", use_container_width=True, type="primary" if st.session_state.current_page == "Formulaire" else "secondary", key="nav_form"):
             st.session_state.current_page = "Formulaire"
@@ -751,8 +797,17 @@ else:
                 st.session_state.last_generated_ticket = None
                 st.rerun()
         else:
-            st.write("")
+            if st.button("👤 Mon profil", use_container_width=True, type="primary" if st.session_state.current_page == "Mon Profil" else "secondary", key="nav_profile_alt"):
+                st.session_state.current_page = "Mon Profil"
+                st.rerun()
     with nav_col4:
+        if st.session_state.user_role == 'admin':
+            if st.button("👤 Mon profil", use_container_width=True, type="primary" if st.session_state.current_page == "Mon Profil" else "secondary", key="nav_profile"):
+                st.session_state.current_page = "Mon Profil"
+                st.rerun()
+        else:
+            st.write("")
+    with nav_col5:
         if st.button("🚪 Se déconnecter", use_container_width=True, key="nav_logout"):
             logout()
 
@@ -833,6 +888,8 @@ else:
         if valider_btn:
             if not visitor_lastname or not visitor_firstname or not visitor_email or not company or not host or not reason:
                 st.markdown('<div class="custom-error-banner"><i class="fa-solid fa-circle-exclamation"></i> Veuillez renseigner l\'ensemble des champs obligatoires marqués d\'un astérisque (*).</div>', unsafe_allow_html=True)
+            elif not is_valid_email(visitor_email):
+                st.markdown('<div class="custom-error-banner"><i class="fa-solid fa-circle-exclamation"></i> L\'adresse e-mail du visiteur semble invalide. Merci de la vérifier (ex : jean.dupont@email.com).</div>', unsafe_allow_html=True)
             elif not rgpd:
                 st.markdown('<div class="custom-error-banner"><i class="fa-solid fa-circle-exclamation"></i> L\'acceptation de la charte de confidentialité RGPD est obligatoire pour valider la demande.</div>', unsafe_allow_html=True)
             else:
@@ -997,6 +1054,21 @@ Sainte-Eanne, France"""
         future_visitors = [r for r in requests_list if r['date'] > today_date]
         other_visitors = past_visitors + future_visitors
 
+        # Indicateurs clés en direct
+        nb_active_now = sum(1 for r in requests_list if get_visit_status(r) == 'En cours')
+        nb_today = len(today_visitors)
+        nb_scheduled = sum(1 for r in requests_list if get_visit_status(r) == 'Programmé')
+        nb_total = len(requests_list)
+        st.markdown(f"""
+        <div class="stat-grid">
+            <div class="stat-card"><div class="stat-number">{nb_active_now}</div><div class="stat-label">🟢 Accès actifs maintenant</div></div>
+            <div class="stat-card"><div class="stat-number">{nb_today}</div><div class="stat-label">📅 Visiteurs aujourd'hui</div></div>
+            <div class="stat-card"><div class="stat-number">{nb_scheduled}</div><div class="stat-label">🕒 Accès programmés</div></div>
+            <div class="stat-card"><div class="stat-number">{nb_total}</div><div class="stat-label">📋 Total enregistré</div></div>
+        </div>
+        <br>
+        """, unsafe_allow_html=True)
+
         # Outils de recherche de l'administrateur
         if st.session_state.user_role == 'admin':
             st.markdown("<h4>🔍 Outils de recherche de l'administrateur</h4>", unsafe_allow_html=True)
@@ -1065,6 +1137,55 @@ Sainte-Eanne, France"""
         # Section 2 : Connexions précédentes
         st.markdown("<h3>📅 Connexions précédentes (Historique)</h3>", unsafe_allow_html=True)
         st.markdown(render_visitors_table(other_visitors), unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+
+    # ==========================================
+    # --- PAGE : MON PROFIL (SELF-SERVICE) ---
+    # ==========================================
+    elif st.session_state.current_page == "Mon Profil":
+        st.markdown('<div class="content-card">', unsafe_allow_html=True)
+        st.markdown('<h2 style="margin-top:0;"><i class="fa-solid fa-id-badge"></i> Mon profil</h2>', unsafe_allow_html=True)
+        st.write("Consultez vos informations de compte et modifiez votre mot de passe en toute sécurité.")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        me = st.session_state.db['users'][st.session_state.username]
+        role_label = "🔥 Administrateur" if me['role'] == 'admin' else "📋 Accueil / Sécurité"
+
+        col_p1, col_p2 = st.columns(2, gap="large")
+        with col_p1:
+            st.markdown(f"""
+            <div class="content-box">
+                <div class="content-title">👤 Identité</div>
+                <p style="font-size:0.95rem; color:#334155; margin-bottom:4px;"><b>Nom :</b> {me['firstname']} {me['lastname']}</p>
+                <p style="font-size:0.95rem; color:#334155; margin-bottom:4px;"><b>Identifiant :</b> {st.session_state.username}</p>
+                <p style="font-size:0.95rem; color:#334155; margin-bottom:4px;"><b>E-mail :</b> {me.get('email', '—')}</p>
+                <p style="font-size:0.95rem; color:#334155; margin-bottom:0;"><b>Rôle :</b> {role_label}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col_p2:
+            st.markdown('<div class="content-box">', unsafe_allow_html=True)
+            st.markdown('<div class="content-title">🔑 Changer mon mot de passe</div>', unsafe_allow_html=True)
+            old_pwd = st.text_input("Mot de passe actuel", type="password", key="profile_old_pwd")
+            new_pwd1 = st.text_input("Nouveau mot de passe", type="password", key="profile_new_pwd1")
+            new_pwd2 = st.text_input("Confirmer le nouveau mot de passe", type="password", key="profile_new_pwd2")
+
+            if st.button("Mettre à jour le mot de passe", use_container_width=True, key="btn_update_own_pwd"):
+                if not old_pwd or not new_pwd1 or not new_pwd2:
+                    st.error("Merci de renseigner les trois champs.")
+                elif hash_password(old_pwd) != me['password']:
+                    st.error("Le mot de passe actuel est incorrect.")
+                elif len(new_pwd1) < 6:
+                    st.error("Le nouveau mot de passe doit contenir au moins 6 caractères.")
+                elif new_pwd1 != new_pwd2:
+                    st.error("Les deux nouveaux mots de passe ne correspondent pas.")
+                else:
+                    st.session_state.db['users'][st.session_state.username]['password'] = hash_password(new_pwd1)
+                    save_persistent_db(st.session_state.db)
+                    st.success("Votre mot de passe a été mis à jour avec succès !")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
