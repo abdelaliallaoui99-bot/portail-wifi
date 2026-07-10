@@ -17,8 +17,8 @@ st.set_page_config(
 if 'db' not in st.session_state:
     st.session_state.db = {
         'users': {
-            'admin': {'password': 'admin123', 'role': 'admin', 'firstname': 'Jean', 'lastname': 'Dupond', 'email': 'admin@serval.fr', 'active': True},
-            'accueil': {'password': 'accueil123', 'role': 'accueil', 'firstname': 'Marie', 'lastname': 'Martin', 'email': 'accueil@serval.fr', 'active': True}
+            'admin': {'password': 'admin123', 'role': 'admin', 'firstname': 'Administrateur', 'lastname': '', 'email': 'admin@serval.fr', 'active': True},
+            'accueil': {'password': 'accueil123', 'role': 'accueil', 'firstname': 'Accueil', 'lastname': '', 'email': 'accueil@serval.fr', 'active': True}
         },
         'requests': [
             {
