@@ -447,7 +447,7 @@ def generate_wifi_credentials(lastname):
     return wifi_user, wifi_pass
 
 def render_visitors_table(visitors_list):
-    """Génère une table HTML propre, robuste et élégante aux couleurs de Serval."""
+    """Génère une table HTML propre, robuste et élégante aux couleurs de Serval sans aucun espace en début de ligne."""
     if not visitors_list:
         return '<div style="padding: 20px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; color: #64748b; text-align: center; font-style: italic;">Aucune connexion Wi-Fi enregistrée.</div>'
     
@@ -459,41 +459,40 @@ def render_visitors_table(visitors_list):
             if status_calc == 'En cours' 
             else '<span class="custom-badge-expired">Terminé</span>'
         )
-        rows_html += f"""
-        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 13px;">
-            <td style="padding: 12px; font-weight: bold; color: #004737;">#00{r['id']}</td>
-            <td style="padding: 12px;"><b>{r['visitor_lastname'].upper()}</b> {r['visitor_firstname']}<br><span style="font-size:11px; color:#64748b;">{r['visitor_email']}</span></td>
-            <td style="padding: 12px;">{r['company']}</td>
-            <td style="padding: 12px;">{r['host']}</td>
-            <td style="padding: 12px;"><span style="background-color:#f4f7f6; padding:3px 8px; border-radius:4px; font-size:11px;">{r['reason']}</span></td>
-            <td style="padding: 12px;">Le {r['date'].strftime('%d/%m/%Y')}<br><span style="font-size:11px; font-weight:600; color:#e05326;">({r['duration']} h)</span></td>
-            <td style="padding: 12px; font-family: monospace; font-size:11px; color:#334155;">ID: {r['wifi_user']}<br>Clé: *********</td>
-            <td style="padding: 12px;">{status_badge}</td>
-        </tr>
-        """
+        rows_html += f"""<tr style="border-bottom: 1px solid #e2e8f0; font-size: 13px;">
+<td style="padding: 12px; font-weight: bold; color: #004737;">#00{r['id']}</td>
+<td style="padding: 12px;"><b>{r['visitor_lastname'].upper()}</b> {r['visitor_firstname']}<br><span style="font-size:11px; color:#64748b;">{r['visitor_email']}</span></td>
+<td style="padding: 12px;">{r['company']}</td>
+<td style="padding: 12px;">{r['host']}</td>
+<td style="padding: 12px;"><span style="background-color:#f4f7f6; padding:3px 8px; border-radius:4px; font-size:11px;">{r['reason']}</span></td>
+<td style="padding: 12px;">Le {r['date'].strftime('%d/%m/%Y')}<br><span style="font-size:11px; font-weight:600; color:#e05326;">({r['duration']} h)</span></td>
+<td style="padding: 12px; font-family: monospace; font-size:11px; color:#334155;">ID: {r['wifi_user']}<br>Clé: *********</td>
+<td style="padding: 12px;">{status_badge}</td>
+</tr>"""
     
-    full_table = f"""
-    <div style="overflow-x: auto; margin-top: 10px; margin-bottom: 25px;">
-        <table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; font-family: 'Plus Jakarta Sans', sans-serif;">
-            <thead>
-                <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: left; font-size: 13px;">
-                    <th style="padding: 12px; font-weight: 700; color: #475569;">ID</th>
-                    <th style="padding: 12px; font-weight: 700; color: #475569;">Visiteur</th>
-                    <th style="padding: 12px; font-weight: 700; color: #475569;">Société</th>
-                    <th style="padding: 12px; font-weight: 700; color: #475569;">Personne visitée</th>
-                    <th style="padding: 12px; font-weight: 700; color: #475569;">Motif</th>
-                    <th style="padding: 12px; font-weight: 700; color: #475569;">Date &amp; Durée</th>
-                    <th style="padding: 12px; font-weight: 700; color: #475569;">Compte Wi-Fi</th>
-                    <th style="padding: 12px; font-weight: 700; color: #475569;">Statut</th>
-                </tr>
-            </thead>
-            <tbody>
-                {rows_html}
-            </tbody>
-        </table>
-    </div>
-    """
-    return full_table
+    full_table = f"""<div style="overflow-x: auto; margin-top: 10px; margin-bottom: 25px;">
+<table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; font-family: 'Plus Jakarta Sans', sans-serif;">
+<thead>
+<tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: left; font-size: 13px;">
+<th style="padding: 12px; font-weight: 700; color: #475569;">ID</th>
+<th style="padding: 12px; font-weight: 700; color: #475569;">Visiteur</th>
+<th style="padding: 12px; font-weight: 700; color: #475569;">Société</th>
+<th style="padding: 12px; font-weight: 700; color: #475569;">Personne visitée</th>
+<th style="padding: 12px; font-weight: 700; color: #475569;">Motif</th>
+<th style="padding: 12px; font-weight: 700; color: #475569;">Date &amp; Durée</th>
+<th style="padding: 12px; font-weight: 700; color: #475569;">Compte Wi-Fi</th>
+<th style="padding: 12px; font-weight: 700; color: #475569;">Statut</th>
+</tr>
+</thead>
+<tbody>
+{rows_html}
+</tbody>
+</table>
+</div>"""
+    
+    # Nettoyage ultime et strict de l'indentation de chaque ligne pour empêcher Streamlit d'interpréter le code comme du texte brut
+    clean_table = "\n".join([line.strip() for line in full_table.split("\n")])
+    return clean_table
 
 
 # ==========================================
@@ -870,6 +869,7 @@ Service informatique"""
 
         # Section 1 : Connexions du jour
         st.markdown("<h3>📅 Connexions de ce jour (Aujourd\'hui)</h3>", unsafe_allow_html=True)
+        # render_visitors_table applique maintenant le strip-line strict pour qu'il soit rendu à 100% comme tableau HTML et non comme code textuel
         st.markdown(render_visitors_table(today_visitors), unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
