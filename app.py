@@ -3,6 +3,8 @@ import random
 import string
 import pandas as pd
 import io
+import json
+import os
 from datetime import datetime, time, date
 
 # Configuration de la page pour une expérience premium responsive
@@ -13,9 +15,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Initialisation de la base de données simulée en mémoire pour Serval S.A.S
-if 'db' not in st.session_state:
-    st.session_state.db = {
+# --- PERSISTANCE DE LA BASE DE DONNÉES EN JSON ---
+def load_persistent_db():
+    """Charge la base de données depuis un fichier JSON local s'il existe."""
+    default_db = {
         'users': {
             'admin': {'password': 'admin123', 'role': 'admin', 'firstname': 'Administrateur', 'lastname': '', 'email': 'admin@serval.fr', 'active': True},
             'accueil': {'password': 'accueil123', 'role': 'accueil', 'firstname': 'Accueil', 'lastname': '', 'email': 'accueil@serval.fr', 'active': True}
@@ -29,9 +32,9 @@ if 'db' not in st.session_state:
                 'company': 'DDVH S.A.',
                 'host': 'Yanis Talbi',
                 'reason': 'Réunion',
-                'date': date(2026, 7, 9),
-                'start_time': time(9, 0),
-                'end_time': time(11, 0),
+                'date': '2026-07-09',
+                'start_time': '09:00:00',
+                'end_time': '11:00:00',
                 'duration': 2.0,
                 'rgpd': True,
                 'comments': 'Entretien annuel d\'évaluation.',
@@ -46,9 +49,9 @@ if 'db' not in st.session_state:
                 'company': 'TechSolutions',
                 'host': 'Alice Bernard',
                 'reason': 'Maintenance technique',
-                'date': date(2026, 7, 8),
-                'start_time': time(14, 0),
-                'end_time': time(18, 0),
+                'date': '2026-07-08',
+                'start_time': '14:00:00',
+                'end_time': '18:00:00',
                 'duration': 4.0,
                 'rgpd': True,
                 'comments': 'Maintenance annuelle du serveur principal.',
@@ -58,8 +61,62 @@ if 'db' not in st.session_state:
         ],
         'emails_sent': []
     }
+    
+    if not os.path.exists('database.json'):
+        return default_db
+    try:
+        with open('database.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return default_db
 
-# Variables d'état pour gérer l'authentification et la navigation interne
+def save_persistent_db(db):
+    """Sauvegarde de manière persistante la base de données en format JSON."""
+    serializable_db = {
+        'users': db['users'],
+        'requests': [],
+        'emails_sent': db['emails_sent']
+    }
+    # Conversion des types complexes date et time en chaînes de caractères
+    for r in db['requests']:
+        r_copy = r.copy()
+        if isinstance(r_copy['date'], (date, datetime)):
+            r_copy['date'] = r_copy['date'].strftime('%Y-%m-%d')
+        if isinstance(r_copy['start_time'], time):
+            r_copy['start_time'] = r_copy['start_time'].strftime('%H:%M:%S')
+        if isinstance(r_copy['end_time'], time):
+            r_copy['end_time'] = r_copy['end_time'].strftime('%H:%M:%S')
+        serializable_db['requests'].append(r_copy)
+        
+    try:
+        with open('database.json', 'w', encoding='utf-8') as f:
+            json.dump(serializable_db, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        st.error(f"Erreur d'écriture de la base de données : {e}")
+
+def get_parsed_db():
+    """Récupère la base de données avec conversion des chaînes en objets date et time."""
+    db_raw = load_persistent_db()
+    parsed_requests = []
+    for r in db_raw['requests']:
+        r_copy = r.copy()
+        if isinstance(r_copy['date'], str):
+            r_copy['date'] = datetime.strptime(r_copy['date'], '%Y-%m-%d').date()
+        if isinstance(r_copy['start_time'], str):
+            parts = r_copy['start_time'].split(':')
+            r_copy['start_time'] = time(int(parts[0]), int(parts[1]))
+        if isinstance(r_copy['end_time'], str):
+            parts = r_copy['end_time'].split(':')
+            r_copy['end_time'] = time(int(parts[0]), int(parts[1]))
+        parsed_requests.append(r_copy)
+    db_raw['requests'] = parsed_requests
+    return db_raw
+
+# Chargement de la base de données
+if 'db' not in st.session_state:
+    st.session_state.db = get_parsed_db()
+
+# Variables d'état de session utilisateur
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_role' not in st.session_state:
@@ -71,7 +128,7 @@ if 'current_page' not in st.session_state:
 if 'last_generated_ticket' not in st.session_state:
     st.session_state.last_generated_ticket = None
 
-# Variables temporaires pour réinitialiser le formulaire
+# Variables de réinitialisation de formulaire
 if 'form_reset_trigger' not in st.session_state:
     st.session_state.form_reset_trigger = False
 
@@ -733,6 +790,7 @@ else:
                     
                     # Enregistrement direct dans le registre
                     st.session_state.db['requests'].append(final_record)
+                    save_persistent_db(st.session_state.db) # Sauvegarde définitive persistante en JSON !
                     
                     # E-mail automatique réglementaire (PDF page 4)
                     email_body = f"""Bonjour,
@@ -758,6 +816,7 @@ Service informatique"""
                         'body': email_body,
                         'time': datetime.now().strftime('%H:%M:%S')
                     })
+                    save_persistent_db(st.session_state.db)
                     
                     # Fix de la syntaxe de stockage du ticket
                     st.session_state.last_generated_ticket = final_record
@@ -821,6 +880,8 @@ Service informatique"""
         st.write("Consultez et suivez la traçabilité des accès réseau.")
         st.markdown("<br>", unsafe_allow_html=True)
 
+        # Rechargement à jour pour garantir l'affichage sans perte
+        st.session_state.db = get_parsed_db()
         requests_list = st.session_state.db['requests']
         today_date = date(2026, 7, 9) # Date fixe de simulation réglementaire
 
@@ -918,6 +979,7 @@ Service informatique"""
                     'lastname': new_last,
                     'active': True
                 }
+                save_persistent_db(st.session_state.db)
                 st.success(f"Le compte utilisateur '{new_id}' a été créé avec succès !")
                 st.rerun()
 
@@ -938,6 +1000,7 @@ Service informatique"""
                 temp_new_pwd = st.text_input(f"Modifier mot de passe", value=data['password'], type="password", key=f"pwd_field_{username}")
                 if temp_new_pwd != data['password']:
                     st.session_state.db['users'][username]['password'] = temp_new_pwd
+                    save_persistent_db(st.session_state.db)
                     st.toast(f"Mot de passe de '{username}' mis à jour !")
             with col_action:
                 if username == st.session_state.username:
@@ -945,6 +1008,7 @@ Service informatique"""
                 else:
                     if st.button("🗑️ Supprimer", key=f"del_{username}", use_container_width=True):
                         del st.session_state.db['users'][username]
+                        save_persistent_db(st.session_state.db)
                         st.success(f"Compte '{username}' supprimé.")
                         st.rerun()
             st.markdown("<hr style='border:1px solid #f8fafc; margin: 10px 0;'>", unsafe_allow_html=True)
