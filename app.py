@@ -715,25 +715,26 @@ if not st.session_state.logged_in:
             f'<img src="{FARM_B64}" style="width:100%; height:150px; object-fit:cover; border-radius:8px 8px 0 0; display:block;">'
             if FARM_B64 else ""
         )
-        st.markdown(f"""
-        <div class="content-box" style="padding:0; overflow:hidden;">
-            {farm_image_html}
-            <div style="padding: 1.5rem;">
-                <div class="content-title">🌱 Serval, partenaire des éleveurs de demain</div>
-                <p style="font-size: 0.9rem; margin-bottom: 0; text-align: justify; color: #334155;">
-                <b>Expert de la nutrition des jeunes animaux</b><br>
-                Fabricant français d'aliment d'allaitement et de solutions nutritionnelles de haute qualité pour jeunes animaux depuis plus de 60 ans.
-                </p>
-            </div>
-        </div>
-        
-        <div class="content-box">
-            <div class="content-title">🛡️ Traçabilité &amp; Sécurité Informatique</div>
-            <p style="font-size: 0.9rem; margin-bottom: 0; text-align: justify; color: #334155;">
-            Chaque ticket d'accès Wi-Fi généré est temporaire, tracé conformément aux réglementations de sécurité du DSI, et transmis de manière éco-conçue directement par e-mail.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        right_col_html = f"""<div class="content-box" style="padding:0; overflow:hidden;">
+{farm_image_html}
+<div style="padding: 1.5rem;">
+<div class="content-title">🌱 Serval, partenaire des éleveurs de demain</div>
+<p style="font-size: 0.9rem; margin-bottom: 0; text-align: justify; color: #334155;">
+<b>Expert de la nutrition des jeunes animaux</b><br>
+Fabricant français d'aliment d'allaitement et de solutions nutritionnelles de haute qualité pour jeunes animaux depuis plus de 60 ans.
+</p>
+</div>
+</div>
+<div class="content-box">
+<div class="content-title">🛡️ Traçabilité &amp; Sécurité Informatique</div>
+<p style="font-size: 0.9rem; margin-bottom: 0; text-align: justify; color: #334155;">
+Chaque ticket d'accès Wi-Fi généré est temporaire, tracé conformément aux réglementations de sécurité du DSI, et transmis de manière éco-conçue directement par e-mail.
+</p>
+</div>"""
+        # Nettoyage strict : suppression de l'indentation ET des lignes vides,
+        # qui coupaient le bloc HTML en plein milieu quand la photo n'était pas configurée
+        right_col_html = "\n".join(line.strip() for line in right_col_html.split("\n") if line.strip())
+        st.markdown(right_col_html, unsafe_allow_html=True)
         
     st.markdown("""
     <div class="stat-grid">
