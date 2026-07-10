@@ -5,7 +5,10 @@ import pandas as pd
 import io
 import json
 import os
-from datetime import datetime, time, date
+import hashlib
+import smtplib
+from email.mime.text import MIMEText
+from datetime import datetime, time, date, timedelta
 
 # Configuration de la page pour une expérience premium responsive
 st.set_page_config(
@@ -15,13 +18,22 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# --- SÉCURITÉ : HACHAGE DES MOTS DE PASSE ---
+def hash_password(raw_password):
+    """Retourne le hachage SHA-256 d'un mot de passe (aucun mot de passe en clair n'est stocké)."""
+    return hashlib.sha256(raw_password.encode('utf-8')).hexdigest()
+
+def is_hashed(value):
+    """Détecte si une valeur ressemble déjà à un hachage SHA-256 (64 caractères hexadécimaux)."""
+    return isinstance(value, str) and len(value) == 64 and all(c in string.hexdigits for c in value)
+
 # --- PERSISTANCE DE LA BASE DE DONNÉES EN JSON ---
 def load_persistent_db():
     """Charge la base de données depuis un fichier JSON local s'il existe."""
     default_db = {
         'users': {
-            'admin': {'password': 'admin123', 'role': 'admin', 'firstname': 'Administrateur', 'lastname': '', 'email': 'admin@serval.fr', 'active': True},
-            'accueil': {'password': 'accueil123', 'role': 'accueil', 'firstname': 'Accueil', 'lastname': '', 'email': 'accueil@serval.fr', 'active': True}
+            'admin': {'password': hash_password('admin123'), 'role': 'admin', 'firstname': 'Administrateur', 'lastname': '', 'email': 'admin@serval.fr', 'active': True},
+            'accueil': {'password': hash_password('accueil123'), 'role': 'accueil', 'firstname': 'Accueil', 'lastname': '', 'email': 'accueil@serval.fr', 'active': True}
         },
         'requests': [
             {
@@ -66,7 +78,12 @@ def load_persistent_db():
         return default_db
     try:
         with open('database.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
+            db = json.load(f)
+        # Migration automatique : hachage des mots de passe historiques stockés en clair
+        for uname, udata in db.get('users', {}).items():
+            if not is_hashed(udata.get('password', '')):
+                udata['password'] = hash_password(udata['password'])
+        return db
     except Exception:
         return default_db
 
@@ -127,6 +144,8 @@ if 'current_page' not in st.session_state:
     st.session_state.current_page = "Formulaire"
 if 'last_generated_ticket' not in st.session_state:
     st.session_state.last_generated_ticket = None
+if 'last_email_status' not in st.session_state:
+    st.session_state.last_email_status = None
 
 # Variables de réinitialisation de formulaire
 if 'form_reset_trigger' not in st.session_state:
@@ -418,6 +437,25 @@ st.markdown("""
         font-size: 12px;
         display: inline-block;
     }
+    .custom-badge-scheduled {
+        background-color: #fef9c3;
+        color: #a16207;
+        padding: 4px 10px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 12px;
+        display: inline-block;
+    }
+    .custom-badge-revoked {
+        background-color: #f1f5f9;
+        color: #475569;
+        padding: 4px 10px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 12px;
+        display: inline-block;
+        text-decoration: line-through;
+    }
     
     /* Boutons personnalisés orange */
     div.stButton > button:first-child {
@@ -456,7 +494,7 @@ def check_login(username, password):
     """Vérifie l'exactitude des comptes conformément à la spécification."""
     users = st.session_state.db['users']
     if username in users:
-        if users[username]['password'] == password:
+        if users[username]['password'] == hash_password(password):
             if users[username]['active']:
                 st.session_state.logged_in = True
                 st.session_state.user_role = users[username]['role']
@@ -479,20 +517,60 @@ def logout():
     st.session_state.current_page = "Formulaire"
     st.rerun()
 
-def get_visit_status(visit_date, start_time, end_time):
-    """Calcule le statut de validité de la session Wi-Fi."""
-    today = date(2026, 7, 9)
-    current_time = time(16, 3)
-    
-    if visit_date < today:
+def get_visit_status(record):
+    """Calcule le statut de validité de la session Wi-Fi (Programmé / En cours / Terminé / Révoqué)."""
+    if record.get('revoked'):
+        return "Révoqué"
+
+    now = datetime.now()
+    today = now.date()
+    current_time = now.time()
+    visit_date = record['date']
+    start_time = record['start_time']
+    end_time = record['end_time']
+
+    if visit_date > today:
+        return "Programmé"
+    elif visit_date < today:
         return "Terminé"
-    elif visit_date > today:
-        return "En cours"
     else:
-        if current_time > end_time:
+        if current_time < start_time:
+            return "Programmé"
+        elif current_time > end_time:
             return "Terminé"
         else:
             return "En cours"
+
+def send_email_smtp(to_address, subject, body):
+    """
+    Envoie un e-mail réel via SMTP si les identifiants sont configurés dans st.secrets.
+    Configuration attendue dans .streamlit/secrets.toml :
+        [smtp]
+        server = "smtp.gmail.com"
+        port = 587
+        user = "votre_compte@gmail.com"
+        password = "mot_de_passe_application"
+        sender_name = "Serval S.A.S - Portail Wi-Fi"
+    Si aucune configuration n'est présente, l'e-mail est simplement journalisé (mode simulation),
+    ce qui permet de tester l'application sans compte SMTP.
+    """
+    if "smtp" not in st.secrets:
+        return False, "simulation"
+    try:
+        cfg = st.secrets["smtp"]
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = f"{cfg.get('sender_name', 'Serval S.A.S')} <{cfg['user']}>"
+        msg["To"] = to_address
+
+        with smtplib.SMTP(cfg["server"], int(cfg.get("port", 587))) as server:
+            server.starttls()
+            server.login(cfg["user"], cfg["password"])
+            server.sendmail(cfg["user"], [to_address], msg.as_string())
+        return True, "envoyé"
+    except Exception as e:
+        return False, str(e)
+
 
 def generate_wifi_credentials(lastname):
     """Génère de manière sécurisée des identifiants Wi-Fi uniques."""
@@ -510,14 +588,16 @@ def render_visitors_table(visitors_list):
     
     rows_html = ""
     for r in visitors_list:
-        status_calc = get_visit_status(r['date'], r['start_time'], r['end_time'])
-        status_badge = (
-            '<span class="custom-badge-active">En cours</span>' 
-            if status_calc == 'En cours' 
-            else '<span class="custom-badge-expired">Terminé</span>'
-        )
+        status_calc = get_visit_status(r)
+        badge_map = {
+            'En cours': '<span class="custom-badge-active">🟢 En cours</span>',
+            'Programmé': '<span class="custom-badge-scheduled">🕒 Programmé</span>',
+            'Révoqué': '<span class="custom-badge-revoked">⛔ Révoqué</span>',
+            'Terminé': '<span class="custom-badge-expired">⚪ Terminé</span>',
+        }
+        status_badge = badge_map.get(status_calc, badge_map['Terminé'])
         rows_html += f"""<tr style="border-bottom: 1px solid #e2e8f0; font-size: 13px;">
-<td style="padding: 12px; font-weight: bold; color: #004737;">#00{r['id']}</td>
+<td style="padding: 12px; font-weight: bold; color: #004737;">#{r['id']:03d}</td>
 <td style="padding: 12px;"><b>{r['visitor_lastname'].upper()}</b> {r['visitor_firstname']}<br><span style="font-size:11px; color:#64748b;">{r['visitor_email']}</span></td>
 <td style="padding: 12px;">{r['company']}</td>
 <td style="padding: 12px;">{r['host']}</td>
@@ -713,7 +793,7 @@ else:
             reason = st.text_input("Motif de la visite *", placeholder="Ex: Réunion, Maintenance, Entretien...", key="f_reason")
             host = st.text_input("Personne visitée (Nom et prénom) *", placeholder="Ex: Yanis Talbi", key="f_host")
             # Modification de l'affichage de la date au format JJ/MM/AAAA pour la saisie
-            visit_date = st.date_input("Date de visite *", date(2026, 7, 9), format="DD/MM/YYYY", key="f_date")
+            visit_date = st.date_input("Date de visite *", date.today(), format="DD/MM/YYYY", key="f_date")
             
             time_col1, time_col2 = st.columns(2)
             with time_col1:
@@ -769,7 +849,8 @@ else:
                     # Identifiants Wi-Fi sécurisés
                     wifi_user, wifi_pass = generate_wifi_credentials(visitor_lastname)
                     
-                    new_id = len(st.session_state.db['requests']) + 1
+                    existing_ids = [r['id'] for r in st.session_state.db['requests']]
+                    new_id = (max(existing_ids) + 1) if existing_ids else 1
                     final_record = {
                         'id': new_id,
                         'visitor_lastname': visitor_lastname,
@@ -785,47 +866,72 @@ else:
                         'rgpd': True,
                         'comments': comments,
                         'wifi_user': wifi_user,
-                        'wifi_pass': wifi_pass
+                        'wifi_pass': wifi_pass,
+                        'revoked': False,
+                        'created_by': st.session_state.username
                     }
                     
                     # Enregistrement direct dans le registre
                     st.session_state.db['requests'].append(final_record)
                     save_persistent_db(st.session_state.db) # Sauvegarde définitive persistante en JSON !
                     
-                    # E-mail automatique réglementaire (PDF page 4)
-                    email_body = f"""Bonjour,
+                    # E-mail automatique réglementaire contenant les identifiants Wi-Fi
+                    email_body = f"""Bonjour {visitor_firstname},
 
-Votre accès Wifi a été activé.
+Votre accès Wi-Fi visiteur chez Serval S.A.S a été activé.
 
-Nom: {visitor_firstname} {visitor_lastname}
-Société: {company}
-Motif: {reason}
-Heure début de la visite : {start_time.strftime('%H:%M')}
-Heure fin de la visite : {end_time.strftime('%H:%M')}
-Durée de la visite : {round(duration_hours, 1)} heure(s)
+Nom : {visitor_firstname} {visitor_lastname}
+Société : {company}
+Personne visitée : {host}
+Motif : {reason}
+Date de visite : {visit_date.strftime('%d/%m/%Y')}
+Horaires d'accès : {start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')} ({round(duration_hours, 1)} h)
+
+Identifiants réseau Wi-Fi-Visiteurs :
+Identifiant : {wifi_user}
+Clé d'accès : {wifi_pass}
+
+Cet accès est strictement temporaire et sera automatiquement désactivé à l'heure de fin indiquée
+ci-dessus, conformément à la politique de sécurité informatique de Serval S.A.S. Merci de ne pas
+partager ces identifiants.
 
 Serval vous souhaite la bienvenue, bonne visite.
 
 Cordialement,
+Service informatique - Serval S.A.S
+Sainte-Eanne, France"""
 
-Service informatique"""
-                    
+                    email_sent_ok, email_status = send_email_smtp(
+                        visitor_email,
+                        "🔑 Votre accès Wi-Fi Serval S.A.S",
+                        email_body
+                    )
+
                     st.session_state.db['emails_sent'].append({
                         'to': visitor_email,
                         'subject': "🔑 Votre accès Wifi Serval S.A.S",
                         'body': email_body,
-                        'time': datetime.now().strftime('%H:%M:%S')
+                        'time': datetime.now().strftime('%H:%M:%S'),
+                        'status': email_status
                     })
                     save_persistent_db(st.session_state.db)
-                    
+
                     # Fix de la syntaxe de stockage du ticket
                     st.session_state.last_generated_ticket = final_record
+                    st.session_state.last_email_status = (email_sent_ok, email_status)
                     st.rerun()
                     
         # Affichage du ticket Wi-Fi premium si généré (directement sous le formulaire)
         if st.session_state.last_generated_ticket is not None:
             t = st.session_state.last_generated_ticket
-            st.markdown('<div class="custom-success-banner"><i class="fa-solid fa-circle-check" style="font-size:22px;"></i> Activation réussie ! L\'accès réseau est actif et le ticket contenant les identifiants masqués a été transmis par e-mail.</div>', unsafe_allow_html=True)
+            email_ok, email_status = st.session_state.last_email_status or (False, "simulation")
+            if email_ok:
+                email_note = "L'accès réseau est actif et l'e-mail contenant les identifiants a été envoyé au visiteur."
+            elif email_status == "simulation":
+                email_note = "L'accès réseau est actif. ⚠️ Aucun serveur SMTP n'est configuré : l'e-mail n'a pas été réellement envoyé (mode simulation, consultez st.secrets)."
+            else:
+                email_note = f"L'accès réseau est actif, mais l'envoi de l'e-mail a échoué ({email_status})."
+            st.markdown(f'<div class="custom-success-banner"><i class="fa-solid fa-circle-check" style="font-size:22px;"></i> Activation réussie ! {email_note}</div>', unsafe_allow_html=True)
             
             st.markdown(f"""
             <div class="ticket-wrapper">
@@ -883,7 +989,7 @@ Service informatique"""
         # Rechargement à jour pour garantir l'affichage sans perte
         st.session_state.db = get_parsed_db()
         requests_list = st.session_state.db['requests']
-        today_date = date(2026, 7, 9) # Date fixe de simulation réglementaire
+        today_date = date.today()
 
         # Séparation de l'historique en deux listes distinctes
         today_visitors = [r for r in requests_list if r['date'] == today_date]
@@ -927,6 +1033,26 @@ Service informatique"""
                         use_container_width=True,
                         key="btn_csv_export"
                     )
+            # Révocation anticipée d'un accès actif (sécurité DSI)
+            revocable = [r for r in requests_list if not r.get('revoked') and get_visit_status(r) in ('En cours', 'Programmé')]
+            if revocable:
+                st.markdown("<h4>⛔ Révoquer un accès Wi-Fi avant son terme</h4>", unsafe_allow_html=True)
+                rev_options = {f"#{r['id']:03d} — {r['visitor_firstname']} {r['visitor_lastname'].upper()} ({r['company']})": r['id'] for r in revocable}
+                col_rev1, col_rev2 = st.columns([3, 1])
+                with col_rev1:
+                    rev_choice = st.selectbox("Sélectionner une session active", list(rev_options.keys()), key="rev_select")
+                with col_rev2:
+                    st.write("")
+                    st.write("")
+                    if st.button("Révoquer l'accès", use_container_width=True, key="btn_revoke"):
+                        target_id = rev_options[rev_choice]
+                        for r in st.session_state.db['requests']:
+                            if r['id'] == target_id:
+                                r['revoked'] = True
+                        save_persistent_db(st.session_state.db)
+                        st.success(f"L'accès #{target_id:03d} a été révoqué immédiatement.")
+                        st.rerun()
+
             st.markdown("<hr style='border:1px solid #f1f5f9; margin: 20px 0;'>", unsafe_allow_html=True)
 
         # Section 1 : Connexions du jour
@@ -955,28 +1081,31 @@ Service informatique"""
 
         # 1. Création de compte
         st.markdown("<h4>➕ Créer un nouveau compte utilisateur</h4>", unsafe_allow_html=True)
-        c_col1, c_col2, c_col3, c_col4 = st.columns(4)
+        c_col1, c_col2, c_col3 = st.columns(3)
         with c_col1:
             new_id = st.text_input("Identifiant *", placeholder="Ex: martin_a")
+            new_email = st.text_input("E-mail", placeholder="Ex: a.martin@serval.fr")
         with c_col2:
             new_pwd = st.text_input("Mot de passe *", type="password", placeholder="••••••••")
-        with c_col3:
             new_role = st.selectbox("Rôle du compte *", ["accueil", "admin"])
-        with c_col4:
-            new_first = st.text_input("Prénom", placeholder="Ex: Albert")
-            new_last = st.text_input("Nom", placeholder="Ex: Martin")
+        with c_col3:
+            new_first = st.text_input("Prénom *", placeholder="Ex: Albert")
+            new_last = st.text_input("Nom *", placeholder="Ex: Martin")
 
         if st.button("Créer le compte utilisateur", use_container_width=True):
             if not new_id or not new_pwd or not new_first or not new_last:
                 st.error("Les champs marqués d'un astérisque (*) sont obligatoires.")
             elif new_id in st.session_state.db['users']:
                 st.error("Cet identifiant est déjà utilisé par un autre utilisateur.")
+            elif len(new_pwd) < 6:
+                st.error("Le mot de passe doit contenir au moins 6 caractères.")
             else:
                 st.session_state.db['users'][new_id] = {
-                    'password': new_pwd,
+                    'password': hash_password(new_pwd),
                     'role': new_role,
                     'firstname': new_first,
                     'lastname': new_last,
+                    'email': new_email,
                     'active': True
                 }
                 save_persistent_db(st.session_state.db)
@@ -987,21 +1116,42 @@ Service informatique"""
 
         # 2. Liste des comptes et modifications interactives
         st.markdown("<h4>📋 Comptes utilisateurs enregistrés</h4>", unsafe_allow_html=True)
-        
+
         users_db = st.session_state.db['users']
-        
+
         for username, data in list(users_db.items()):
-            col_info, col_pwd, col_action = st.columns([2, 2, 1])
+            col_info, col_role, col_pwd, col_action = st.columns([2, 1.3, 2, 1.2])
             with col_info:
                 st.markdown(f"👤 **{data['firstname']} {data['lastname']}** (`{username}`)")
-                role_label = "🔥 ADMINISTRATEUR" if data['role'] == 'admin' else "📋 ACCUEIL / SÉCURITÉ"
-                st.markdown(f"<small style='color: #4f46e5; font-weight:bold;'>{role_label}</small>", unsafe_allow_html=True)
+                st.markdown(f"<small style='color:#64748b;'>{data.get('email', '—')}</small>", unsafe_allow_html=True)
+            with col_role:
+                if username == st.session_state.username:
+                    role_label = "🔥 ADMINISTRATEUR" if data['role'] == 'admin' else "📋 ACCUEIL / SÉCURITÉ"
+                    st.markdown(f"<small style='color: #4f46e5; font-weight:bold;'>{role_label}</small>", unsafe_allow_html=True)
+                    st.caption("Actif")
+                else:
+                    role_index = 0 if data['role'] == 'accueil' else 1
+                    new_role_val = st.selectbox("Rôle", ["accueil", "admin"], index=role_index, key=f"role_{username}", label_visibility="collapsed")
+                    if new_role_val != data['role']:
+                        st.session_state.db['users'][username]['role'] = new_role_val
+                        save_persistent_db(st.session_state.db)
+                        st.toast(f"Rôle de '{username}' mis à jour !")
+                        st.rerun()
+                    active_val = st.checkbox("Compte actif", value=data.get('active', True), key=f"active_{username}")
+                    if active_val != data.get('active', True):
+                        st.session_state.db['users'][username]['active'] = active_val
+                        save_persistent_db(st.session_state.db)
+                        st.toast(f"Statut de '{username}' mis à jour !")
+                        st.rerun()
             with col_pwd:
-                temp_new_pwd = st.text_input(f"Modifier mot de passe", value=data['password'], type="password", key=f"pwd_field_{username}")
-                if temp_new_pwd != data['password']:
-                    st.session_state.db['users'][username]['password'] = temp_new_pwd
-                    save_persistent_db(st.session_state.db)
-                    st.toast(f"Mot de passe de '{username}' mis à jour !")
+                temp_new_pwd = st.text_input("Nouveau mot de passe", value="", type="password", placeholder="Laisser vide pour ne pas changer", key=f"pwd_field_{username}")
+                if temp_new_pwd:
+                    if len(temp_new_pwd) < 6:
+                        st.caption(":red[Min. 6 caractères]")
+                    else:
+                        st.session_state.db['users'][username]['password'] = hash_password(temp_new_pwd)
+                        save_persistent_db(st.session_state.db)
+                        st.toast(f"Mot de passe de '{username}' mis à jour !")
             with col_action:
                 if username == st.session_state.username:
                     st.markdown("<span style='color: #94a3b8; font-size:12px; font-style:italic;'>Session active</span>", unsafe_allow_html=True)
