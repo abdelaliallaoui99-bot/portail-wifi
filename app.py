@@ -655,7 +655,8 @@ else:
             # Champ texte libre pour le motif de visite (Saisie textuelle)
             reason = st.text_input("Motif de la visite *", placeholder="Ex: Réunion, Maintenance, Entretien...", key="f_reason")
             host = st.text_input("Personne visitée (Nom et prénom) *", placeholder="Ex: Yanis Talbi", key="f_host")
-            visit_date = st.date_input("Date de visite *", date(2026, 7, 9), key="f_date")
+            # Modification de l'affichage de la date au format JJ/MM/AAAA pour la saisie
+            visit_date = st.date_input("Date de visite *", date(2026, 7, 9), format="DD/MM/YYYY", key="f_date")
             
             time_col1, time_col2 = st.columns(2)
             with time_col1:
@@ -886,7 +887,8 @@ Service informatique"""
     # ==========================================
     elif st.session_state.current_page == "Gestion des comptes" and st.session_state.user_role == 'admin':
         st.markdown('<div class="content-card">', unsafe_allow_html=True)
-        st.markdown('<h2 style="margin-top:0;"><i class="fa-solid fa-users-gear"></i> Écran 5 - Gestion des comptes</h2>', unsafe_allow_html=True)
+        # Modification stricte : Suppression du mot "Écran 5" du titre de l'onglet
+        st.markdown('<h2 style="margin-top:0;"><i class="fa-solid fa-users-gear"></i> Gestion des comptes</h2>', unsafe_allow_html=True)
         st.write("Gérez les habilitations et les accès des agents d'accueil et des administrateurs du portail.")
         st.markdown("<br>", unsafe_allow_html=True)
 
